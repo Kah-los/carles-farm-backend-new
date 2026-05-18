@@ -3,10 +3,18 @@ const express = require('express');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const router = express.Router();
-const { query } = require('../db');
+const { Pool } = require('pg');
+
+// Database connection
+const pool = new Pool({
+  connectionString: process.env.DATABASE_URL,
+  ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false
+});
 
 // Login endpoint
 router.post('/login', async (req, res) => {
+  const client = await pool.connect();
+  
   try {
     const { username, pin } = req.body;
 
@@ -16,7 +24,7 @@ router.post('/login', async (req, res) => {
     }
 
     // Find user
-    const result = await query(
+    const result = await client.query(
       'SELECT * FROM users WHERE username = $1',
       [username]
     );
@@ -42,7 +50,7 @@ router.post('/login', async (req, res) => {
       const newFailedAttempts = user.failed_attempts + 1;
       const shouldLock = newFailedAttempts >= 3;
 
-      await query(
+      await client.query(
         'UPDATE users SET failed_attempts = $1, is_locked = $2 WHERE id = $3',
         [newFailedAttempts, shouldLock, user.id]
       );
@@ -59,7 +67,7 @@ router.post('/login', async (req, res) => {
     }
 
     // Successful login - reset failed attempts and update last login
-    await query(
+    await client.query(
       'UPDATE users SET failed_attempts = 0, last_login = CURRENT_TIMESTAMP WHERE id = $1',
       [user.id]
     );
@@ -89,11 +97,15 @@ router.post('/login', async (req, res) => {
   } catch (error) {
     console.error('Login error:', error);
     res.status(500).json({ error: 'Internal server error during login' });
+  } finally {
+    client.release();
   }
 });
 
 // Change PIN endpoint
 router.post('/change-pin', async (req, res) => {
+  const client = await pool.connect();
+  
   try {
     const { currentPin, newPin } = req.body;
     const userId = req.user.userId;
@@ -108,7 +120,7 @@ router.post('/change-pin', async (req, res) => {
     }
 
     // Get user
-    const result = await query('SELECT * FROM users WHERE id = $1', [userId]);
+    const result = await client.query('SELECT * FROM users WHERE id = $1', [userId]);
     
     if (result.rows.length === 0) {
       return res.status(404).json({ error: 'User not found' });
@@ -127,7 +139,7 @@ router.post('/change-pin', async (req, res) => {
     const newPinHash = await bcrypt.hash(newPin, 10);
 
     // Update PIN
-    await query(
+    await client.query(
       'UPDATE users SET pin_hash = $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2',
       [newPinHash, userId]
     );
@@ -137,6 +149,8 @@ router.post('/change-pin', async (req, res) => {
   } catch (error) {
     console.error('Change PIN error:', error);
     res.status(500).json({ error: 'Internal server error' });
+  } finally {
+    client.release();
   }
 });
 
