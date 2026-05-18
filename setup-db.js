@@ -15,10 +15,25 @@ async function setupDatabase() {
   try {
     console.log('🔧 Setting up database schema...');
     
+    // Drop all tables first for clean slate (only if they exist)
+    console.log('🗑️  Dropping existing tables if any...');
+    await client.query('DROP TABLE IF EXISTS financial_transactions CASCADE');
+    await client.query('DROP TABLE IF EXISTS weight_records CASCADE');
+    await client.query('DROP TABLE IF EXISTS breeding_records CASCADE');
+    await client.query('DROP TABLE IF EXISTS medication_logs CASCADE');
+    await client.query('DROP TABLE IF NOT EXISTS medication_dosages CASCADE');
+    await client.query('DROP TABLE IF EXISTS medications CASCADE');
+    await client.query('DROP TABLE IF EXISTS feeding_logs CASCADE');
+    await client.query('DROP TABLE IF EXISTS formula_items CASCADE');
+    await client.query('DROP TABLE IF EXISTS feed_formulas CASCADE');
+    await client.query('DROP TABLE IF EXISTS feed_ingredients CASCADE');
+    await client.query('DROP TABLE IF EXISTS animals CASCADE');
+    await client.query('DROP TABLE IF EXISTS users CASCADE');
+    
     // Create users table
     console.log('📋 Creating users table...');
     await client.query(`
-      CREATE TABLE IF NOT EXISTS users (
+      CREATE TABLE users (
         id SERIAL PRIMARY KEY,
         username VARCHAR(50) UNIQUE NOT NULL,
         pin_hash VARCHAR(255) NOT NULL,
@@ -35,7 +50,7 @@ async function setupDatabase() {
     // Create animals table
     console.log('📋 Creating animals table...');
     await client.query(`
-      CREATE TABLE IF NOT EXISTS animals (
+      CREATE TABLE animals (
         id SERIAL PRIMARY KEY,
         tag_number VARCHAR(50) UNIQUE NOT NULL,
         species VARCHAR(50) NOT NULL,
@@ -56,7 +71,7 @@ async function setupDatabase() {
     // Create feed_ingredients table
     console.log('📋 Creating feed_ingredients table...');
     await client.query(`
-      CREATE TABLE IF NOT EXISTS feed_ingredients (
+      CREATE TABLE feed_ingredients (
         id SERIAL PRIMARY KEY,
         name VARCHAR(100) UNIQUE NOT NULL,
         unit VARCHAR(20) DEFAULT 'kg',
@@ -71,7 +86,7 @@ async function setupDatabase() {
     // Create feed_formulas table
     console.log('📋 Creating feed_formulas table...');
     await client.query(`
-      CREATE TABLE IF NOT EXISTS feed_formulas (
+      CREATE TABLE feed_formulas (
         id SERIAL PRIMARY KEY,
         name VARCHAR(100) UNIQUE NOT NULL,
         target_species VARCHAR(50),
@@ -84,7 +99,7 @@ async function setupDatabase() {
     // Create formula_items table
     console.log('📋 Creating formula_items table...');
     await client.query(`
-      CREATE TABLE IF NOT EXISTS formula_items (
+      CREATE TABLE formula_items (
         id SERIAL PRIMARY KEY,
         formula_id INTEGER REFERENCES feed_formulas(id) ON DELETE CASCADE,
         ingredient_id INTEGER REFERENCES feed_ingredients(id),
@@ -96,7 +111,7 @@ async function setupDatabase() {
     // Create feeding_logs table
     console.log('📋 Creating feeding_logs table...');
     await client.query(`
-      CREATE TABLE IF NOT EXISTS feeding_logs (
+      CREATE TABLE feeding_logs (
         id SERIAL PRIMARY KEY,
         animal_id INTEGER REFERENCES animals(id) ON DELETE CASCADE,
         formula_id INTEGER REFERENCES feed_formulas(id),
@@ -111,7 +126,7 @@ async function setupDatabase() {
     // Create medications table
     console.log('📋 Creating medications table...');
     await client.query(`
-      CREATE TABLE IF NOT EXISTS medications (
+      CREATE TABLE medications (
         id SERIAL PRIMARY KEY,
         name VARCHAR(100) UNIQUE NOT NULL,
         type VARCHAR(50),
@@ -127,7 +142,7 @@ async function setupDatabase() {
     // Create medication_dosages table
     console.log('📋 Creating medication_dosages table...');
     await client.query(`
-      CREATE TABLE IF NOT EXISTS medication_dosages (
+      CREATE TABLE medication_dosages (
         id SERIAL PRIMARY KEY,
         medication_id INTEGER REFERENCES medications(id) ON DELETE CASCADE,
         species VARCHAR(50) NOT NULL,
@@ -140,7 +155,7 @@ async function setupDatabase() {
     // Create medication_logs table
     console.log('📋 Creating medication_logs table...');
     await client.query(`
-      CREATE TABLE IF NOT EXISTS medication_logs (
+      CREATE TABLE medication_logs (
         id SERIAL PRIMARY KEY,
         animal_id INTEGER REFERENCES animals(id) ON DELETE CASCADE,
         medication_id INTEGER REFERENCES medications(id),
@@ -156,7 +171,7 @@ async function setupDatabase() {
     // Create breeding_records table
     console.log('📋 Creating breeding_records table...');
     await client.query(`
-      CREATE TABLE IF NOT EXISTS breeding_records (
+      CREATE TABLE breeding_records (
         id SERIAL PRIMARY KEY,
         dam_id INTEGER REFERENCES animals(id) ON DELETE CASCADE,
         sire_id INTEGER REFERENCES animals(id),
@@ -174,7 +189,7 @@ async function setupDatabase() {
     // Create weight_records table
     console.log('📋 Creating weight_records table...');
     await client.query(`
-      CREATE TABLE IF NOT EXISTS weight_records (
+      CREATE TABLE weight_records (
         id SERIAL PRIMARY KEY,
         animal_id INTEGER REFERENCES animals(id) ON DELETE CASCADE,
         weight DECIMAL(10,2) NOT NULL,
@@ -187,7 +202,7 @@ async function setupDatabase() {
     // Create financial_transactions table
     console.log('📋 Creating financial_transactions table...');
     await client.query(`
-      CREATE TABLE IF NOT EXISTS financial_transactions (
+      CREATE TABLE financial_transactions (
         id SERIAL PRIMARY KEY,
         type VARCHAR(20) NOT NULL,
         category VARCHAR(50) NOT NULL,
@@ -202,12 +217,12 @@ async function setupDatabase() {
 
     // Create indexes
     console.log('📋 Creating indexes...');
-    await client.query('CREATE INDEX IF NOT EXISTS idx_animals_species ON animals(species)');
-    await client.query('CREATE INDEX IF NOT EXISTS idx_animals_status ON animals(status)');
-    await client.query('CREATE INDEX IF NOT EXISTS idx_feeding_logs_date ON feeding_logs(fed_at)');
-    await client.query('CREATE INDEX IF NOT EXISTS idx_medication_logs_date ON medication_logs(administered_at)');
-    await client.query('CREATE INDEX IF NOT EXISTS idx_breeding_date ON breeding_records(breeding_date)');
-    await client.query('CREATE INDEX IF NOT EXISTS idx_financial_date ON financial_transactions(transaction_date)');
+    await client.query('CREATE INDEX idx_animals_species ON animals(species)');
+    await client.query('CREATE INDEX idx_animals_status ON animals(status)');
+    await client.query('CREATE INDEX idx_feeding_logs_date ON feeding_logs(fed_at)');
+    await client.query('CREATE INDEX idx_medication_logs_date ON medication_logs(administered_at)');
+    await client.query('CREATE INDEX idx_breeding_date ON breeding_records(breeding_date)');
+    await client.query('CREATE INDEX idx_financial_date ON financial_transactions(transaction_date)');
 
     // Check if any users exist
     const userCheck = await client.query('SELECT COUNT(*) FROM users');
