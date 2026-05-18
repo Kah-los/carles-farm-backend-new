@@ -21,7 +21,7 @@ async function setupDatabase() {
     await client.query('DROP TABLE IF EXISTS weight_records CASCADE');
     await client.query('DROP TABLE IF EXISTS breeding_records CASCADE');
     await client.query('DROP TABLE IF EXISTS medication_logs CASCADE');
-    await client.query('DROP TABLE IF NOT EXISTS medication_dosages CASCADE');
+    await client.query('DROP TABLE IF EXISTS medication_dosages CASCADE');
     await client.query('DROP TABLE IF EXISTS medications CASCADE');
     await client.query('DROP TABLE IF EXISTS feeding_logs CASCADE');
     await client.query('DROP TABLE IF EXISTS formula_items CASCADE');
